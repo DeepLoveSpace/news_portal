@@ -51,11 +51,10 @@ class PostDetail(DetailView):
     context_object_name = 'post'
     queryset = Post.objects.all()
 
-    def get_object(self, *args, **kwargs):  # переопределяем метод получения объекта, как ни странно
+    def get_object(self, *args, **kwargs):
         obj = cache.get(f'post-{self.kwargs["pk"]}',
-                        None)  # кэш очень похож на словарь, и метод get действует так же. Он забирает значение по ключу, если его нет, то забирает None.
+                        None)
 
-        # если объекта нет в кэше, то получаем его и записываем в кэш
         if not obj:
             obj = super().get_object(queryset=self.queryset)
             cache.set(f'post-{self.kwargs["pk"]}', obj)
@@ -109,9 +108,6 @@ class NewsSearch(ListView):
         return context
 
 
-# настройка рассылки
-
-
 @login_required
 @csrf_protect
 def subscriptions(request):
@@ -145,18 +141,16 @@ def subscriptions(request):
 
 class Index(View):
     def get(self, request):
-        # .  Translators: This message appears on the home page only
         models = Post.objects.all()
 
         context = {
             'models': models,
             'current_time': timezone.localtime(timezone.now()),
-            'timezones': pytz.common_timezones  # добавляем в контекст все доступные часовые пояса
+            'timezones': pytz.common_timezones
         }
 
         return HttpResponse(render(request, 'news.html', context))
 
-    #  по пост-запросу будем добавлять в сессию часовой пояс, который и будет обрабатываться написанным нами ранее middleware
     def post(self, request):
         request.session['django_timezone'] = request.POST['timezone']
         return redirect('/')
