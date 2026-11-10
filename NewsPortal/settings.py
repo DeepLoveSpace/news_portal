@@ -19,6 +19,9 @@ logger = logging.getLogger('django')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR.mkdir(exist_ok=True)
+
 SECRET_KEY = 'django-insecure-pxtv2auh+^s=p3eei2@zil64zr#jrczkqc=@(0ic#eo%2c@f70'
 
 DEBUG = True
@@ -42,7 +45,8 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.yandex',
-    'django_apscheduler'
+    'django_apscheduler',
+    'basic',
 ]
 
 SITE_ID = 1
@@ -59,7 +63,6 @@ MIDDLEWARE = [
     'django.contrib.flatpages.middleware.FlatpageFallbackMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'basic.middlewares.TimezoneMiddleware',
-
 ]
 
 ROOT_URLCONF = 'NewsPortal.urls'
@@ -79,7 +82,6 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-
             ],
         },
     },
@@ -154,8 +156,9 @@ DEFAULT_FROM_EMAIL = 'titan182@yandex.ru'
 
 SERVER_EMAIL = 'titan182@yandex.ru'
 
-APSHEDULER_DARETIME_FORMAT = 'N, j, Y, f:s a'
-APSHEDULER_RUN_NOW_TIMEOUT = 25
+# Исправлены опечатки: было APSHEDULER_DARETIME_FORMAT / APSHEDULER_RUN_NOW_TIMEOUT
+APSCHEDULER_DATETIME_FORMAT = 'N, j, Y, f:s a'
+APSCHEDULER_RUN_NOW_TIMEOUT = 25
 SITE_URL = 'http://127.0.0.1:8000'
 
 CELERY_BROKER_URL = 'redis://localhost:6379'
@@ -169,4 +172,152 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
         'LOCATION': os.path.join(BASE_DIR, 'cache_files'),
     }
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'style': '{',
+
+    'formatters': {
+        'console_debug': {
+            'format': '{asctime} {levelname} {message}',
+            'style': '{',
+        },
+        'console_warning': {
+            'format': '{asctime} {levelname} {message} {pathname}',
+            'style': '{',
+        },
+        'console_error': {
+            'format': '{asctime} {levelname} {message} {pathname} {exc_info}',
+            'style': '{',
+        },
+        'general': {
+            'format': '{asctime} {levelname} {module} {message}',
+            'style': '{',
+        },
+        'errors': {
+            'format': '{asctime} {levelname} {message} {pathname} {exc_info}',
+            'style': '{',
+        },
+        'security': {
+            'format': '{asctime} {levelname} {module} {message}',
+            'style': '{',
+        },
+        'email': {
+            'format': '{asctime} {levelname} {message} {pathname}',
+            'style': '{',
+        },
+    },
+
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        },
+        # Точные уровни для консоли — чтобы одно сообщение печаталось один раз
+        # в нужном формате, а не дублировалось тремя хендлерами.
+        'level_debug': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: record.levelno == logging.DEBUG,
+        },
+        'level_warning': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: record.levelno == logging.WARNING,
+        },
+        'level_error': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda record: record.levelno >= logging.ERROR,
+        },
+    },
+
+    'handlers': {
+        # --- Консоль (только при DEBUG=True) ---
+        'console_debug': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true', 'level_debug'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'console_debug',
+        },
+        'console_warning': {
+            'level': 'WARNING',
+            'filters': ['require_debug_true', 'level_warning'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'console_warning',
+        },
+        'console_error': {
+            'level': 'ERROR',
+            'filters': ['require_debug_true', 'level_error'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'console_error',
+        },
+
+        # --- general.log (INFO+, только при DEBUG=False) ---
+        'general': {
+            'level': 'INFO',
+            'filters': ['require_debug_false'],
+            'class': 'logging.FileHandler',
+            'filename': str(LOGS_DIR / 'general.log'),
+            'formatter': 'general',
+        },
+
+        # --- errors.log (ERROR+ из django.request/server/template/db.backends) ---
+        'errors': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': str(LOGS_DIR / 'errors.log'),
+            'formatter': 'errors',
+        },
+
+        # --- security.log (только django.security) ---
+        'security': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': str(LOGS_DIR / 'security.log'),
+            'formatter': 'security',
+        },
+
+        # --- Почта (ERROR+ из django.request/server, только при DEBUG=False) ---
+        'mail_admin': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'email',
+        },
+    },
+
+    'loggers': {
+        'django': {
+            'handlers': ['console_debug', 'console_warning', 'console_error', 'general'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['errors', 'mail_admin'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.server': {
+            'handlers': ['errors', 'mail_admin'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.template': {
+            'handlers': ['errors'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['errors'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['security'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }
