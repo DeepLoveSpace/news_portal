@@ -156,7 +156,6 @@ DEFAULT_FROM_EMAIL = 'titan182@yandex.ru'
 
 SERVER_EMAIL = 'titan182@yandex.ru'
 
-# Исправлены опечатки: было APSHEDULER_DARETIME_FORMAT / APSHEDULER_RUN_NOW_TIMEOUT
 APSCHEDULER_DATETIME_FORMAT = 'N, j, Y, f:s a'
 APSCHEDULER_RUN_NOW_TIMEOUT = 25
 SITE_URL = 'http://127.0.0.1:8000'
@@ -217,8 +216,7 @@ LOGGING = {
         'require_debug_false': {
             '()': 'django.utils.log.RequireDebugFalse',
         },
-        # Точные уровни для консоли — чтобы одно сообщение печаталось один раз
-        # в нужном формате, а не дублировалось тремя хендлерами.
+
         'level_debug': {
             '()': 'django.utils.log.CallbackFilter',
             'callback': lambda record: record.levelno == logging.DEBUG,
@@ -234,7 +232,6 @@ LOGGING = {
     },
 
     'handlers': {
-        # --- Консоль (только при DEBUG=True) ---
         'console_debug': {
             'level': 'DEBUG',
             'filters': ['require_debug_true', 'level_debug'],
@@ -254,7 +251,6 @@ LOGGING = {
             'formatter': 'console_error',
         },
 
-        # --- general.log (INFO+, только при DEBUG=False) ---
         'general': {
             'level': 'INFO',
             'filters': ['require_debug_false'],
@@ -263,7 +259,6 @@ LOGGING = {
             'formatter': 'general',
         },
 
-        # --- errors.log (ERROR+ из django.request/server/template/db.backends) ---
         'errors': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
@@ -271,7 +266,6 @@ LOGGING = {
             'formatter': 'errors',
         },
 
-        # --- security.log (только django.security) ---
         'security': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
@@ -279,7 +273,6 @@ LOGGING = {
             'formatter': 'security',
         },
 
-        # --- Почта (ERROR+ из django.request/server, только при DEBUG=False) ---
         'mail_admin': {
             'level': 'ERROR',
             'filters': ['require_debug_false'],
