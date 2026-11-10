@@ -1,0 +1,152 @@
+{% extends 'flatpages/default.html' %}
+{% load censor_filter %}
+{% load custom_tags %}
+{% load i18n %}
+{% load tz %}
+
+{% block title %}
+{% trans 'NEWS' %}
+{% endblock title %}
+
+{% block content %}
+
+<div align="right">
+    {% if user.is_authenticated %}
+        <span>Привет, <b>{{ user.username }}</b>!</span> |
+        <a href="{% url 'profile_edit' %}">Профиль</a> |
+        <a href="{% url 'account_logout' %}">Выйти</a>
+    {% else %}
+        <a href="{% url 'account_login' %}">Войти</a> |
+        <a href="{% url 'account_signup' %}">Регистрация</a>
+    {% endif %}
+</div>
+<hr>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page title</title>
+    <style>
+        body {background-color: {% if current_time.hour >= 19 or current_time.hour <= 7 %} darkcyan {% else %} powderblue {% endif %};}
+    </style>
+</head>
+
+<body>
+    <div align="right">
+    <form action="{% url 'set_language' %}" method="POST"> {% csrf_token %}
+        <input type="hidden" name="next" value="{{ redirect_to }}">
+
+        <select name="language" id="">
+            {% get_available_languages as LANGUAGES %}
+            {% get_language_info_list for LANGUAGES as languages %}
+
+            {% for language in languages %}
+                <option value="{{ language.code }}" {% if language.code == LANGUAGE_CODE %} selected {% endif %}>
+                    {{ language.name }} - {{ language.code }}
+                </option>
+            {% endfor %}
+        </select>
+        <input type="submit" value="set">
+    </form>
+    </div>
+    {% get_current_timezone as TIME_ZONE %}
+    <form action="" method="POST">
+        {% csrf_token %}
+        <label for="timezone">Time zone:</label>
+        <select name="timezone">
+            {% for tz in timezones %}
+            <option value="{{ tz }}"{% if tz == TIME_ZONE %} selected{% endif %}>{{ tz }}</option>
+            {% endfor %}
+        </select>
+        <input type="submit" value="Set">
+    </form>
+
+    {{ TIME_ZONE }}
+    {{ current_time|timezone:TIME_ZONE }}
+
+    {% for model in models %}
+    <div class="model-class">
+        {{ model.name }}
+    </div>
+    {% endfor %}
+</body>
+</html>
+
+<h1>{% trans 'All news' %}</h1>
+<hr>
+
+   <h3>{% trans 'Total published:' %} <mark>{{ news|length }}</mark></h3>
+   <h3> {% trans 'Today:' %} {{ time_now|date:'M d Y' }}</h3>
+
+        <a class="btn btn-primary" type="submit" href="search/">{% trans 'To find' %}</a>
+<br>
+<br>
+
+{% load cache %}
+{% cache 100 submit %}
+    {% if perms.news.add_post %}
+        <a class="btn btn-primary" type="submit" href="create/">{% trans 'Publish the news' %}</a>
+    {% endif %}
+    <br>
+    <br>
+    {% if perms.news.add_post %}
+        <a class="btn btn-primary" type="submit" href="articles/create/">{% trans 'Publish an article' %}</a>
+    {% endif %}
+    <br>
+    <br>
+    {% if perms.news.add_post %}
+        <a class="btn btn-primary" type="submit" href="subscriptions/">{% trans 'Subscription Management' %}</a>
+    {% endif %}
+{% endcache %}
+
+    <hr>
+   {% if news %}
+    <center>
+       <table>
+           <tr>
+               <td><b>{% trans 'Heading' %}</b></td>
+               <td><b>{% trans 'Date of publication' %}</b></td>
+               <td><b>{% trans 'Content' %}</b></td>
+               <td><b>{% trans 'Rating' %}</b></td>
+           </tr>
+
+           {% for post in news%}
+           <tr>
+               <td>{{ post.title|censor }}</td>
+               <td>{{ post.post_time|date:'d M Y' }}</td>
+               <td>{{ post.text|truncatewords:20|censor }}</td>
+               <td><center>{{ post.rating }}</center></td>
+               {% if perms.news.change_post %}
+               <td><a href="{% url 'post_update' pk=post.id %}"> {% trans 'To change' %} </a></td>
+               {% endif %}
+               {% if perms.news.delete_post %}
+               <td><a href="{% url 'post_delete' post.id %}"> {% trans 'Delete' %} </a></td>
+               {% endif %}
+           </tr>
+           {% endfor %}
+
+       </table>
+    </center>
+   {% else %}
+       <h2>{% trans 'There is no news!' %}</h2>
+   {% endif %}
+
+   {% if page_obj.has_previous %}
+       <a href="?{% url_replace page=1 %}">1</a>
+       {% if page_obj.previous_page_number != 1 %}
+           ...
+           <a href="?{% url_replace page=page_obj.previous_page_number %}">{{ page_obj.previous_page_number }}</a>
+       {% endif %}
+   {% endif %}
+   {{ page_obj.number }}
+   {% if page_obj.has_next %}
+       <a href="?{% url_replace page=page_obj.next_page_number %}">{{ page_obj.next_page_number }}</a>
+       {% if paginator.num_pages != page_obj.next_page_number %}
+           ...
+           <a href="?{% url_replace page=page_obj.paginator.num_pages %}">{{ page_obj.paginator.num_pages }}</a>
+       {% endif %}
+   {% endif %}
+
+{% endblock content %}

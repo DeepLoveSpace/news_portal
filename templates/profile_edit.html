@@ -1,0 +1,18 @@
+{% extends 'flatpages/default.html' %}
+
+{% block content %}
+<h1>Редактирование профиля</h1>
+<hr>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Сохранить" />
+</form>
+
+<hr>
+{% if not perms.news.add_post %}
+    <p>Хотите публиковать новости? <a href="{% url 'upgrade_to_author' %}">Стать автором</a></p>
+{% else %}
+    <p>Вы уже автор! Можете публиковать новости.</p>
+{% endif %}
+{% endblock %}
